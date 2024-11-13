@@ -12,7 +12,11 @@
 
 ### Import Libraries
 import os, tempfile
-from pylab import *
+from matplotlib import pyplot as plt
+import math
+from math import pi
+from numpy import linspace
+from pathlib import Path
 
 from CSXCAD  import ContinuousStructure
 from openEMS import openEMS
@@ -119,12 +123,15 @@ f = np.linspace(max(1e9,f0-fc),f0+fc,401)
 port.CalcPort(Sim_Path, f)
 s11 = port.uf_ref/port.uf_inc
 s11_dB = 20.0*np.log10(np.abs(s11))
-figure()
-plot(f/1e9, s11_dB, 'k-', linewidth=2, label='$S_{11}$')
-grid()
-legend()
-ylabel('S-Parameter (dB)')
-xlabel('Frequency (GHz)')
+
+plt.figure()
+plt.plot(f/1e9, s11_dB, 'k-', linewidth=2, label='$S_{11}$')
+plt.grid()
+plt.legend()
+plt.ylabel('S-Parameter (dB)')
+plt.xlabel('Frequency (GHz)')
+print("Save Fig")
+plt.savefig(Path(__file__).parent / "SParam.svg")
 
 idx = np.where((s11_dB<-10) & (s11_dB==np.min(s11_dB)))[0]
 if not len(idx)==1:
@@ -135,23 +142,28 @@ else:
     phi   = [0., 90.]
     nf2ff_res = nf2ff.CalcNF2FF(Sim_Path, f_res, theta, phi, center=[0,0,1e-3])
 
-    figure()
     E_norm = 20.0*np.log10(nf2ff_res.E_norm[0]/np.max(nf2ff_res.E_norm[0])) + 10.0*np.log10(nf2ff_res.Dmax[0])
-    plot(theta, np.squeeze(E_norm[:,0]), 'k-', linewidth=2, label='xz-plane')
-    plot(theta, np.squeeze(E_norm[:,1]), 'r--', linewidth=2, label='yz-plane')
-    grid()
-    ylabel('Directivity (dBi)')
-    xlabel('Theta (deg)')
-    title('Frequency: {} GHz'.format(f_res/1e9))
-    legend()
+
+    plt.figure()
+    plt.plot(theta, np.squeeze(E_norm[:,0]), 'k-', linewidth=2, label='xz-plane')
+    plt.plot(theta, np.squeeze(E_norm[:,1]), 'r--', linewidth=2, label='yz-plane')
+    plt.grid()
+    plt.ylabel('Directivity (dBi)')
+    plt.xlabel('Theta (deg)')
+    plt.title('Frequency: {} GHz'.format(f_res/1e9))
+    plt.legend()
+    print("Save Fig")
+    plt.savefig(Path(__file__).parent / "Phase.svg")
 
 Zin = port.uf_tot/port.if_tot
-figure()
-plot(f/1e9, np.real(Zin), 'k-', linewidth=2, label='$\Re\{Z_{in}\}$')
-plot(f/1e9, np.imag(Zin), 'r--', linewidth=2, label='$\Im\{Z_{in}\}$')
-grid()
-legend()
-ylabel('Zin (Ohm)')
-xlabel('Frequency (GHz)')
 
-show()
+plt.figure()
+plt.plot(f/1e9, np.real(Zin), 'k-', linewidth=2, label='$\Re\{Z_{in}\}$')
+plt.plot(f/1e9, np.imag(Zin), 'r--', linewidth=2, label='$\Im\{Z_{in}\}$')
+plt.grid()
+plt.legend()
+plt.ylabel('Zin (Ohm)')
+plt.xlabel('Frequency (GHz)')
+print("Save Fig")
+plt.savefig(Path(__file__).parent / "Impedance.svg")
+#plt.show()
