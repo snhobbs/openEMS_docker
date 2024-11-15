@@ -100,7 +100,6 @@ nf2ff = FDTD.CreateNF2FFBox()
 
 ### Run the simulation
 CSX.Write2XML(sim.geometry_file)
-
 FDTD.Run(str(sim.sim_path), cleanup=False)
 
 ### Postprocessing & plotting

@@ -36,13 +36,13 @@ class Simulation:
 
 ### General parameter setup
 dir_  = Path(__file__).parent
+name =  Path(__file__).stem
 sim = Simulation(
-    name="Bent_Patch_Antenna",
-    geometry_file= dir_ / 'Bent_Patch_Antenna.xml',
+    name=name,
+    geometry_file= dir_ / f'{name}.xml',
     sim_path=dir_ / "results")
 
 ### Setup the simulation
-post_proc_only = False
 unit = 1e-3 # all length in mm
 
 f0 = 2.4e9 # center frequency, frequency of interest!
