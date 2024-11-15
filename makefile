@@ -3,24 +3,26 @@ IMAGE_NAME = openems-image
 CONTAINER_NAME = openems-container
 LOCAL_DIR = $(shell pwd)  # Current directory (where the Makefile is located)
 CONTAINER_WORKDIR = /app
-SCRIPT=src/Simple_Patch_Antenna.py
+COMMAND=python3 /app/examples/python/Simple_Patch_Antenna/Simple_Patch_Antenna.py
 # Default target: Build and run the Docker container
-all: build run
+#all: build run
 
 # Build the Docker image
 build:
 	docker build -t $(IMAGE_NAME) .
 
 # Run the Docker container with volume mounts for local development
+
+#-e DISPLAY=host.docker.internal:0 \
 run:
 	docker run \
-		-v ./:/app/project \
 		-v /tmp/.X11-unix:/tmp/.X11-unix \
-		-e DISPLAY=host.docker.internal:0 \
+		-v ./:/app \
 		-it --rm \
+		-e DISPLAY=${DISPLAY} \
 		--name $(CONTAINER_NAME) \
 		$(IMAGE_NAME) \
-		python3 /app/project/${SCRIPT}
+	  ${COMMAND}	
 
 # Start the Docker container (if it's stopped)
 start:

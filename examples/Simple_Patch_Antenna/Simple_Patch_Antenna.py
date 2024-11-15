@@ -10,22 +10,37 @@
 
 """
 
-### Import Libraries
-import os, tempfile
-from matplotlib import pyplot as plt
-import math
+import os
+import tempfile
+import copy
 from math import pi
-from numpy import linspace
 from pathlib import Path
+from dataclasses import dataclass
+
+import numpy as np
+from matplotlib import pyplot as plt
 
 from CSXCAD  import ContinuousStructure
 from openEMS import openEMS
 from openEMS.physical_constants import *
 
-### General parameter setup
-Sim_Path = os.path.join(tempfile.gettempdir(), 'Simp_Patch')
+@dataclass
+class Simulation:
+    name: str
+    geometry_file: Path
+    sim_path: Path
 
-post_proc_only = False
+### General parameter setup
+dir_  = Path(__file__).parent
+sim = Simulation(
+    name="Simple_Patch_Antenna",
+    geometry_file=(dir_ / Path(__file__).with_suffix('.xml').name),
+    sim_path=dir_ / Path(__file__).stem)
+
+
+# setup FDTD parameter & excitation function
+f0 = 2e9 # center frequency
+fc = 1e9 # 20 dB corner frequency
 
 # patch width (resonant length) in x-direction
 patch_width  = 32 #
@@ -47,17 +62,12 @@ feed_R = 50     #feed resistance
 # size of the simulation box
 SimBox = np.array([200, 200, 150])
 
-# setup FDTD parameter & excitation function
-f0 = 2e9 # center frequency
-fc = 1e9 # 20 dB corner frequency
-
 ### FDTD setup
 ## * Limit the simulation to 30k timesteps
 ## * Define a reduced end criteria of -40dB
 FDTD = openEMS(NrTS=30000, EndCriteria=1e-4)
 FDTD.SetGaussExcite( f0, fc )
 FDTD.SetBoundaryCond( ['MUR', 'MUR', 'MUR', 'MUR', 'MUR', 'MUR'] )
-
 
 CSX = ContinuousStructure()
 FDTD.SetCSX(CSX)
@@ -85,7 +95,7 @@ stop  = [ substrate_width/2,  substrate_length/2, substrate_thickness]
 substrate.AddBox( priority=0, start=start, stop=stop )
 
 # add extra cells to discretize the substrate thickness
-mesh.AddLine('z', linspace(0,substrate_thickness,substrate_cells+1))
+mesh.AddLine('z', np.linspace(0,substrate_thickness,substrate_cells+1))
 
 # create ground (same size as substrate)
 gnd = CSX.AddMetal( 'gnd' ) # create a perfect electric conductor (PEC)
@@ -105,65 +115,60 @@ mesh.SmoothMeshLines('all', mesh_res, 1.4)
 # Add the nf2ff recording box
 nf2ff = FDTD.CreateNF2FFBox()
 
-### Run the simulation
-if 0:  # debugging only
-    CSX_file = os.path.join(Sim_Path, 'simp_patch.xml')
-    if not os.path.exists(Sim_Path):
-        os.mkdir(Sim_Path)
-    CSX.Write2XML(CSX_file)
-    from CSXCAD import AppCSXCAD_BIN
-    os.system(AppCSXCAD_BIN + ' "{}"'.format(CSX_file))
 
-if not post_proc_only:
-    FDTD.Run(Sim_Path, verbose=3, cleanup=True)
-
-
+def analyze(path):
 ### Post-processing and plotting
-f = np.linspace(max(1e9,f0-fc),f0+fc,401)
-port.CalcPort(Sim_Path, f)
-s11 = port.uf_ref/port.uf_inc
-s11_dB = 20.0*np.log10(np.abs(s11))
-
-plt.figure()
-plt.plot(f/1e9, s11_dB, 'k-', linewidth=2, label='$S_{11}$')
-plt.grid()
-plt.legend()
-plt.ylabel('S-Parameter (dB)')
-plt.xlabel('Frequency (GHz)')
-print("Save Fig")
-plt.savefig(Path(__file__).parent / "SParam.svg")
-
-idx = np.where((s11_dB<-10) & (s11_dB==np.min(s11_dB)))[0]
-if not len(idx)==1:
-    print('No resonance frequency found for far-field calulation')
-else:
-    f_res = f[idx[0]]
-    theta = np.arange(-180.0, 180.0, 2.0)
-    phi   = [0., 90.]
-    nf2ff_res = nf2ff.CalcNF2FF(Sim_Path, f_res, theta, phi, center=[0,0,1e-3])
-
-    E_norm = 20.0*np.log10(nf2ff_res.E_norm[0]/np.max(nf2ff_res.E_norm[0])) + 10.0*np.log10(nf2ff_res.Dmax[0])
+    f = np.linspace(max(1e9,f0-fc),f0+fc,401)
+    port.CalcPort(path, f)
+    s11 = port.uf_ref/port.uf_inc
+    s11_dB = 20.0*np.log10(np.abs(s11))
 
     plt.figure()
-    plt.plot(theta, np.squeeze(E_norm[:,0]), 'k-', linewidth=2, label='xz-plane')
-    plt.plot(theta, np.squeeze(E_norm[:,1]), 'r--', linewidth=2, label='yz-plane')
+    plt.plot(f/1e9, s11_dB, 'k-', linewidth=2, label='$S_{11}$')
     plt.grid()
-    plt.ylabel('Directivity (dBi)')
-    plt.xlabel('Theta (deg)')
-    plt.title('Frequency: {} GHz'.format(f_res/1e9))
     plt.legend()
-    print("Save Fig")
-    plt.savefig(Path(__file__).parent / "Phase.svg")
+    plt.ylabel('S-Parameter (dB)')
+    plt.xlabel('Frequency (GHz)')
+    plt.savefig(dir_ / "SParam.svg")
 
-Zin = port.uf_tot/port.if_tot
+    idx = np.where((s11_dB<-10) & (s11_dB==np.min(s11_dB)))[0]
+    if not len(idx)==1:
+        print('No resonance frequency found for far-field calulation')
+    else:
+        f_res = f[idx[0]]
+        theta = np.arange(-180.0, 180.0, 2.0)
+        phi   = [0., 90.]
+        nf2ff_res = nf2ff.CalcNF2FF(path, f_res, theta, phi, center=[0,0,1e-3])
 
-plt.figure()
-plt.plot(f/1e9, np.real(Zin), 'k-', linewidth=2, label='$\Re\{Z_{in}\}$')
-plt.plot(f/1e9, np.imag(Zin), 'r--', linewidth=2, label='$\Im\{Z_{in}\}$')
-plt.grid()
-plt.legend()
-plt.ylabel('Zin (Ohm)')
-plt.xlabel('Frequency (GHz)')
-print("Save Fig")
-plt.savefig(Path(__file__).parent / "Impedance.svg")
-#plt.show()
+        E_norm = 20.0*np.log10(nf2ff_res.E_norm[0]/np.max(nf2ff_res.E_norm[0])) + 10.0*np.log10(nf2ff_res.Dmax[0])
+
+        plt.figure()
+        plt.plot(theta, np.squeeze(E_norm[:,0]), 'k-', linewidth=2, label='xz-plane')
+        plt.plot(theta, np.squeeze(E_norm[:,1]), 'r--', linewidth=2, label='yz-plane')
+        plt.grid()
+        plt.ylabel('Directivity (dBi)')
+        plt.xlabel('Theta (deg)')
+        plt.title('Frequency: {} GHz'.format(f_res/1e9))
+        plt.legend()
+        plt.savefig(dir_ / "Phase.svg")
+
+    Zin = port.uf_tot/port.if_tot
+
+    plt.figure()
+    plt.plot(f/1e9, np.real(Zin), 'k-', linewidth=2, label='$\Re\{Z_{in}\}$')
+    plt.plot(f/1e9, np.imag(Zin), 'r--', linewidth=2, label='$\Im\{Z_{in}\}$')
+    plt.grid()
+    plt.legend()
+    plt.ylabel('Zin (Ohm)')
+    plt.xlabel('Frequency (GHz)')
+    plt.savefig(dir_ / "Impedance.svg")
+
+
+if __name__ == "__main__":
+    post_proc_only = False
+    CSX.Write2XML(str(sim.geometry_file))
+### Run the simulation
+    if not post_proc_only:
+        FDTD.Run(str(sim.sim_path), cleanup=False)
+
+    analyze(str(sim.sim_path))
