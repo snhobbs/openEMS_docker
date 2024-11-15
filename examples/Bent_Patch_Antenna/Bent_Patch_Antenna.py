@@ -144,8 +144,7 @@ nf2ff = FDTD.CreateNF2FFBox()
 
 CSX.Write2XML(str(sim.geometry_file))
 
-if not post_proc_only:
-    FDTD.Run(str(sim.sim_path), cleanup=True)
+FDTD.Run(str(sim.sim_path), cleanup=False)
 
 ### Postprocessing & plotting
 f = np.linspace(max(1e9,f0-fc),f0+fc,401)
@@ -182,7 +181,7 @@ else:
     f_res = f[idx[0]]
     theta = np.arange(-180.0, 180.0, 2.0)
     print("Calculate NF2FF")
-    nf2ff_res_phi0 = nf2ff.CalcNF2FF(str(Sim_Path), f_res, theta, 0, center=np.array([patch_radius+substrate_thickness, 0, 0])*unit, read_cached=True, outfile='nf2ff_xz.h5')
+    nf2ff_res_phi0 = nf2ff.CalcNF2FF(str(str(sim.sim_path)), f_res, theta, 0, center=np.array([patch_radius+substrate_thickness, 0, 0])*unit, read_cached=True, outfile='nf2ff_xz.h5')
 
     plt.figure(figsize=(15, 7))
     ax = plt.subplot(121, polar=True)
@@ -195,7 +194,7 @@ else:
     ax.legend(loc=3)
 
     phi = theta
-    nf2ff_res_theta90 = nf2ff.CalcNF2FF(str(Sim_Path), f_res, 90, phi, center=np.array([patch_radius+substrate_thickness, 0, 0])*unit, read_cached=True, outfile='nf2ff_xy.h5')
+    nf2ff_res_theta90 = nf2ff.CalcNF2FF(str(str(sim.sim_path)), f_res, 90, phi, center=np.array([patch_radius+substrate_thickness, 0, 0])*unit, read_cached=True, outfile='nf2ff_xy.h5')
 
     ax = plt.subplot(122, polar=True)
     E_norm = 20.0*np.log10(nf2ff_res_theta90.E_norm/np.max(nf2ff_res_theta90.E_norm)) + 10.0*np.log10(nf2ff_res_theta90.Dmax)
@@ -209,4 +208,4 @@ else:
     print( 'directivity:    Dmax = {:.1f} ({:.1f} dBi)'.format(nf2ff_res_theta90.Dmax[0], 10*np.log10(nf2ff_res_theta90.Dmax[0])))
     print( 'efficiency:   nu_rad = {:.1f} %'.format(100*nf2ff_res_theta90.Prad[0]/np.real(P_in[idx[0]])))
 
-    plt.savefig("resonance.svg")
+    plt.savefig(dir_ / "resonance.svg")

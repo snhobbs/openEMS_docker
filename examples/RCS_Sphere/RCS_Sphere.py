@@ -16,6 +16,7 @@ from matplotlib import pyplot as plt
 from math import pi, floor, ceil
 import numpy as np
 from numpy import linspace, imag, real, sqrt, array, log10, cos, sin, arange, squeeze
+from numpy.linalg import norm
 from dataclasses import dataclass
 
 from pathlib import Path
@@ -100,8 +101,7 @@ nf2ff = FDTD.CreateNF2FFBox()
 ### Run the simulation
 CSX.Write2XML(sim.geometry_file)
 
-if not post_proc_only:
-    FDTD.Run(str(sim.sim_path), cleanup=True)
+FDTD.Run(str(sim.sim_path), cleanup=False)
 
 ### Postprocessing & plotting
 # get Gaussian pulse strength at frequency f0
@@ -112,10 +112,11 @@ Pin = 0.5*norm(E_dir)**2/Z0 * abs(ef.ui_f_val[0])**2
 nf2ff_res = nf2ff.CalcNF2FF(str(sim.sim_path), f0, 90, arange(-180, 180.1, 2))
 RCS = 4*pi/Pin[0]*nf2ff_res.P_rad[0]
 
-fig = figure()
+fig = plt.figure()
 ax  = fig.add_subplot(111, polar=True)
 ax.plot( nf2ff_res.phi, RCS[0], 'k-', linewidth=2 )
 ax.grid(True)
+plt.savefig(dir_ / "phi.svg")
 
 # calculate RCS over frequency
 freq = linspace(f_start,f_stop,100)
@@ -126,19 +127,19 @@ nf2ff_res = nf2ff.CalcNF2FF(str(sim.sim_path), freq, 90, 180+inc_angle, outfile=
 
 back_scat = np.array([4*pi/Pin[fn]*nf2ff_res.P_rad[fn][0][0] for fn in range(len(freq))])
 
-figure()
-plot(freq/1e6,back_scat, linewidth=2)
-grid()
-xlabel('frequency (MHz)')
-ylabel('RCS ($m^2$)')
-title('radar cross section')
+plt.figure()
+plt.plot(freq/1e6,back_scat, linewidth=2)
+plt.grid()
+plt.xlabel('frequency (MHz)')
+plt.ylabel('RCS ($m^2$)')
+plt.title('radar cross section')
+plt.savefig(dir_ / "radar_cross_section.svg")
 
-figure()
-semilogy(sphere_rad*unit/C0*freq,back_scat/(pi*sphere_rad*unit*sphere_rad*unit), linewidth=2)
-ylim([10^-2, 10^1])
-grid()
-xlabel('sphere radius / wavelength')
-ylabel('RCS / ($\pi a^2$)')
-title('normalized radar cross section')
-
-show()
+plt.figure()
+plt.semilogy(sphere_rad*unit/C0*freq,back_scat/(pi*sphere_rad*unit*sphere_rad*unit), linewidth=2)
+plt.ylim([10^-2, 10^1])
+plt.grid()
+plt.xlabel('sphere radius / wavelength')
+plt.ylabel('RCS / ($\pi a^2$)')
+plt.title('normalized radar cross section')
+plt.savefig(dir_ / "radar_cross_section_normalized.svg")

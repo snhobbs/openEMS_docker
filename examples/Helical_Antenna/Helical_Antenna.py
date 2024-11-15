@@ -145,7 +145,7 @@ nf2ff = FDTD.CreateNF2FFBox(opt_resolution=[lambda0/15]*3)
 ### Run the simulation
 CSX.Write2XML(sim.geometry_file)
 
-FDTD.Run(str(sim.sim_path), cleanup=True)
+FDTD.Run(str(sim.sim_path), cleanup=False)
 
 ### Postprocessing & plotting
 freq = linspace( f0-fc, f0+fc, 501 )
@@ -163,6 +163,7 @@ plt.title( 'feed point impedance' )
 plt.xlabel( 'frequency (MHz)' )
 plt.ylabel( 'impedance ($\Omega$)' )
 plt.legend( )
+plt.savefig(dir_ / "feedpoint_impedance.svg")
 
 ## Plot reflection coefficient S11
 plt.figure()
@@ -171,6 +172,7 @@ plt.grid()
 plt.title( 'reflection coefficient $S_{11}$' )
 plt.xlabel( 'frequency (MHz)' )
 plt.ylabel( 'reflection coefficient $|S_{11}|$' )
+plt.savefig(dir_ / "reflection_s11.svg")
 
 ### Create the NFFF contour
 ## * calculate the far field at phi=0 degrees and at phi=90 degrees
@@ -205,5 +207,4 @@ plt.xlabel('theta (deg)')
 plt.ylabel('directivity (dBi)')
 plt.title('Frequency: {} GHz'.format(nf2ff_res.freq[0]/1e9))
 plt.legend()
-
-plt.show()
+plt.savefig(dir_ / "directivity.svg")

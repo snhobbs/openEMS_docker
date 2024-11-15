@@ -33,10 +33,11 @@ class Simulation:
 
 ### General parameter setup
 dir_  = Path(__file__).parent
+name = Path(__file__).stem
 sim = Simulation(
-    name="Simple_Patch_Antenna",
-    geometry_file=dir_ / 'Simple_Patch_Antenna.xml',
-    sim_path=dir_ / "results"
+    name=name,
+    geometry_file=dir_ / f"{name}.xml",
+    sim_path=dir_ / "results")
 
 
 # setup FDTD parameter & excitation function
@@ -169,7 +170,6 @@ if __name__ == "__main__":
     post_proc_only = False
     CSX.Write2XML(str(sim.geometry_file))
 ### Run the simulation
-    if not post_proc_only:
-        FDTD.Run(str(sim.sim_path), cleanup=False)
+    FDTD.Run(str(sim.sim_path), cleanup=False)
 
     analyze(str(sim.sim_path))

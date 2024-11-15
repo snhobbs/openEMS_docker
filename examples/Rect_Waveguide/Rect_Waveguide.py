@@ -101,8 +101,7 @@ Et.AddBox(start, stop);
 ### Run the simulation
 CSX.Write2XML(sim.geometry_file)
 
-if not post_proc_only:
-    FDTD.Run(str(sim.sim_path), cleanup=True)
+FDTD.Run(str(sim.sim_path), cleanup=False)
 
 ### Postprocessing & plotting
 freq = np.linspace(f_start,f_stop,201)
@@ -122,6 +121,7 @@ plt.plot(freq*1e-6,20*np.log10(abs(s21)),'r--',linewidth=2, label='$S_{21}$')
 plt.legend();
 plt.ylabel('S-Parameter (dB)')
 plt.xlabel(r'frequency (MHz) $\rightarrow$')
+plt.savefig(dir_ / "sparam.svg")
 
 ## Compare analytic and numerical wave-impedance
 plt.figure()
@@ -132,5 +132,4 @@ plt.plot(freq*1e-6,ZL_a,'g-.',linewidth=2, label='$Z_{L, analytic}$')
 plt.ylabel('ZL $(\Omega)$')
 plt.xlabel(r'frequency (MHz) $\rightarrow$')
 plt.legend()
-
-plt.show()
+plt.savefig(dir_ / "frequency_impedance.svg")

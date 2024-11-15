@@ -40,8 +40,6 @@ sim = Simulation(
     geometry_file= dir_ / f"{name}.xml",
     sim_path=dir_ / "results")
 
-post_proc_only = False
-
 unit = 1e-6 # specify everything in um
 MSL_length = 50000
 MSL_width = 600
@@ -111,8 +109,7 @@ pec.AddBox(start, stop, priority=10 )
 ### Run the simulation
 CSX.Write2XML(sim.geometry_file)
 
-if not post_proc_only:
-    FDTD.Run(str(sim.sim_path), cleanup=True)
+FDTD.Run(str(sim.sim_path), cleanup=False)
 
 ### Post-processing and plotting
 f = linspace( 1e6, f_max, 1601 )
@@ -129,5 +126,4 @@ plt.legend()
 plt.ylabel('S-Parameter (dB)')
 plt.xlabel('frequency (GHz)')
 plt.ylim([-40, 2])
-
-plt.show()
+plt.savefig(dir_ / "sparams.svg")

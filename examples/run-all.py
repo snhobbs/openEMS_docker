@@ -14,4 +14,5 @@ import os
 from pathlib import Path
 
 for p in simulations:
-  os.system(f"python3 {p}/{p}.py")
+    print(p)
+    os.system(f"python3 {p}/{p}.py")

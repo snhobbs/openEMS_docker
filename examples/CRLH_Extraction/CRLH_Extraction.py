@@ -183,8 +183,7 @@ if __name__ == '__main__':
     ### Run the simulation
     CSX.Write2XML(sim.geometry_file)
 
-    if not post_proc_only:
-        FDTD.Run(str(sim.sim_path), cleanup=True)
+    FDTD.Run(str(sim.sim_path), cleanup=False)
 
     ### Post-Processing
     f = linspace( f_start, f_stop, 1601 )
@@ -202,6 +201,7 @@ if __name__ == '__main__':
     plt.ylabel('S-Parameter (dB)')
     plt.xlabel('frequency (GHz)')
     plt.ylim([-40, 2])
+    plt.savefig(dir_ / "sparams.svg")
 
     ### Extract CRLH parameter form ABCD matrix
     A = ((1+s11)*(1-s11) + s21*s21)/(2*s21)
@@ -246,4 +246,4 @@ if __name__ == '__main__':
     plt.xlabel(r'$|\beta| p / \pi$')
     plt.ylabel('frequency (GHz)')
     plt.legend(loc=2)
-    plt.show()
+    plt.savefig(dir_ / "beta.svg")
