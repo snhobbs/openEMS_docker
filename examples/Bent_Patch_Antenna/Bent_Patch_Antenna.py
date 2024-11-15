@@ -11,26 +11,38 @@
 """
 
 ### Import Libraries
-import os, tempfile
+import os
+import tempfile
 from matplotlib import pyplot as plt
 from math import pi
 import numpy as np
+from dataclasses import dataclass
+
 from pathlib import Path
 
-from mpl_toolkits.mplot3d import Axes3D
-
 from CSXCAD import CSXCAD
-
 from openEMS.openEMS import openEMS
 from openEMS.physical_constants import C0, EPS0, Z0, MUE0
 
+from mpl_toolkits.mplot3d import Axes3D
+
+
+@dataclass
+class Simulation:
+    name: str
+    geometry_file: Path
+    sim_path: Path
+
+
+### General parameter setup
 dir_  = Path(__file__).parent
+sim = Simulation(
+    name="Bent_Patch_Antenna",
+    geometry_file= dir_ / 'Bent_Patch_Antenna.xml',
+    sim_path=dir_ / "results")
 
 ### Setup the simulation
-Sim_Path = dir_ / 'Bent_Patch'
-
 post_proc_only = False
-
 unit = 1e-3 # all length in mm
 
 f0 = 2.4e9 # center frequency, frequency of interest!
@@ -130,18 +142,14 @@ mesh.SmoothMeshLines(2, max_res, 1.4)
 ## Add the nf2ff recording box
 nf2ff = FDTD.CreateNF2FFBox()
 
-### Run the simulation
-CSX_file = dir_ / 'bent_patch.xml'
-CSX.Write2XML(str(CSX_file))
-#from CSXCAD import AppCSXCAD_BIN
-#os.system(AppCSXCAD_BIN + ' "{}"'.format(CSX_file))
+CSX.Write2XML(str(sim.geometry_file))
 
 if not post_proc_only:
-    FDTD.Run(str(Sim_Path), cleanup=True)
+    FDTD.Run(str(sim.sim_path), cleanup=True)
 
 ### Postprocessing & plotting
 f = np.linspace(max(1e9,f0-fc),f0+fc,401)
-port.CalcPort(str(Sim_Path), f)
+port.CalcPort(str(sim.sim_path), f)
 Zin = port.uf_tot / port.if_tot
 s11 = port.uf_ref/port.uf_inc
 s11_dB = 20.0*np.log10(np.abs(s11))
@@ -202,4 +210,3 @@ else:
     print( 'efficiency:   nu_rad = {:.1f} %'.format(100*nf2ff_res_theta90.Prad[0]/np.real(P_in[idx[0]])))
 
     plt.savefig("resonance.svg")
-

@@ -9,18 +9,37 @@
  (c) 2016-2023 Thorsten Liebig <thorsten.liebig@gmx.de>
 
 """
+import os
+import tempfile
+from matplotlib import pyplot as plt
+from math import pi
+import numpy as np
+from numpy import linspace, imag, real, sqrt, array, log10
+from dataclasses import dataclass
 
-### Import Libraries
-import os, tempfile
-from pylab import *
+from pathlib import Path
 
-from CSXCAD  import ContinuousStructure
-from openEMS import openEMS
-from openEMS.physical_constants import *
+from CSXCAD import CSXCAD, ContinuousStructure
+from openEMS.openEMS import openEMS
+from openEMS.physical_constants import C0, EPS0, Z0, MUE0
+
+from mpl_toolkits.mplot3d import Axes3D
 
 
-### Setup the simulation
-Sim_Path = os.path.join(tempfile.gettempdir(), 'NotchFilter')
+@dataclass
+class Simulation:
+    name: str
+    geometry_file: Path
+    sim_path: Path
+
+### General parameter setup
+dir_  = Path(__file__).parent
+name = Path(__file__).stem
+sim = Simulation(
+    name=name,
+    geometry_file= dir_ / f"{name}.xml",
+    sim_path=dir_ / "results")
+
 post_proc_only = False
 
 unit = 1e-6 # specify everything in um
@@ -90,32 +109,25 @@ stop  = [ MSL_width/2,  MSL_width/2+stub_length, substrate_thickness]
 pec.AddBox(start, stop, priority=10 )
 
 ### Run the simulation
-if 0:  # debugging only
-    CSX_file = os.path.join(Sim_Path, 'notch.xml')
-    if not os.path.exists(Sim_Path):
-        os.mkdir(Sim_Path)
-    CSX.Write2XML(CSX_file)
-    from CSXCAD import AppCSXCAD_BIN
-    os.system(AppCSXCAD_BIN + ' "{}"'.format(CSX_file))
-
+CSX.Write2XML(sim.geometry_file)
 
 if not post_proc_only:
-    FDTD.Run(Sim_Path, cleanup=True)
+    FDTD.Run(str(sim.sim_path), cleanup=True)
 
 ### Post-processing and plotting
 f = linspace( 1e6, f_max, 1601 )
 for p in port:
-    p.CalcPort( Sim_Path, f, ref_impedance = 50)
+    p.CalcPort( str(sim.sim_path), f, ref_impedance = 50)
 
 s11 = port[0].uf_ref / port[0].uf_inc
 s21 = port[1].uf_ref / port[0].uf_inc
 
-plot(f/1e9,20*log10(abs(s11)),'k-',linewidth=2 , label='$S_{11}$')
-grid()
-plot(f/1e9,20*log10(abs(s21)),'r--',linewidth=2 , label='$S_{21}$')
-legend()
-ylabel('S-Parameter (dB)')
-xlabel('frequency (GHz)')
-ylim([-40, 2])
+plt.plot(f/1e9,20*log10(abs(s11)),'k-',linewidth=2 , label='$S_{11}$')
+plt.grid()
+plt.plot(f/1e9,20*log10(abs(s21)),'r--',linewidth=2 , label='$S_{21}$')
+plt.legend()
+plt.ylabel('S-Parameter (dB)')
+plt.xlabel('frequency (GHz)')
+plt.ylim([-40, 2])
 
-show()
+plt.show()

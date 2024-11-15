@@ -10,16 +10,40 @@
 """
 
 ### Import Libraries
-import os, tempfile
-from pylab import *
+import os
+import tempfile
+from matplotlib import pyplot as plt
+from math import pi, floor, ceil
+import numpy as np
+from numpy import linspace, imag, real, sqrt, array, log10, cos, sin, arange, squeeze
+from dataclasses import dataclass
 
-from CSXCAD  import ContinuousStructure
-from openEMS import openEMS
-from openEMS.physical_constants import *
+from pathlib import Path
+
+from CSXCAD import CSXCAD, ContinuousStructure
+from openEMS.openEMS import openEMS
+from openEMS.physical_constants import C0, EPS0, Z0, MUE0
 from openEMS.ports  import UI_data
 
+from mpl_toolkits.mplot3d import Axes3D
+
+
+@dataclass
+class Simulation:
+    name: str
+    geometry_file: Path
+    sim_path: Path
+
+### General parameter setup
+dir_  = Path(__file__).parent
+name = Path(__file__).stem
+sim = Simulation(
+    name=name,
+    geometry_file= dir_ / f"{name}.xml",
+    sim_path=dir_ / "results")
+
+
 ### Setup the simulation
-Sim_Path = os.path.join(tempfile.gettempdir(), 'RCS_Sphere')
 post_proc_only = False
 
 unit = 1e-3 # all length in mm
@@ -74,25 +98,18 @@ pw_exc.AddBox(start, stop)
 nf2ff = FDTD.CreateNF2FFBox()
 
 ### Run the simulation
-if 0:  # debugging only
-    CSX_file = os.path.join(Sim_Path, 'RCS_Sphere.xml')
-    if not os.path.exists(Sim_Path):
-        os.mkdir(Sim_Path)
-    CSX.Write2XML(CSX_file)
-    from CSXCAD import AppCSXCAD_BIN
-    os.system(AppCSXCAD_BIN + ' "{}"'.format(CSX_file))
-
+CSX.Write2XML(sim.geometry_file)
 
 if not post_proc_only:
-    FDTD.Run(Sim_Path, cleanup=True)
+    FDTD.Run(str(sim.sim_path), cleanup=True)
 
 ### Postprocessing & plotting
 # get Gaussian pulse strength at frequency f0
-ef = UI_data('et', Sim_Path, freq=f0)
+ef = UI_data('et', str(sim.sim_path), freq=f0)
 
 Pin = 0.5*norm(E_dir)**2/Z0 * abs(ef.ui_f_val[0])**2
 #
-nf2ff_res = nf2ff.CalcNF2FF(Sim_Path, f0, 90, arange(-180, 180.1, 2))
+nf2ff_res = nf2ff.CalcNF2FF(str(sim.sim_path), f0, 90, arange(-180, 180.1, 2))
 RCS = 4*pi/Pin[0]*nf2ff_res.P_rad[0]
 
 fig = figure()
@@ -102,10 +119,10 @@ ax.grid(True)
 
 # calculate RCS over frequency
 freq = linspace(f_start,f_stop,100)
-ef = UI_data( 'et', Sim_Path, freq ) # time domain/freq domain voltage
+ef = UI_data( 'et', str(sim.sim_path), freq ) # time domain/freq domain voltage
 Pin = 0.5*norm(E_dir)**2/Z0 * abs(np.array(ef.ui_f_val[0]))**2
 
-nf2ff_res = nf2ff.CalcNF2FF(Sim_Path, freq, 90, 180+inc_angle, outfile='back_nf2ff.h5')
+nf2ff_res = nf2ff.CalcNF2FF(str(sim.sim_path), freq, 90, 180+inc_angle, outfile='back_nf2ff.h5')
 
 back_scat = np.array([4*pi/Pin[fn]*nf2ff_res.P_rad[fn][0][0] for fn in range(len(freq))])
 

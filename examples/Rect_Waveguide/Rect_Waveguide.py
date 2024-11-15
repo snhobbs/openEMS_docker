@@ -9,18 +9,37 @@
  (c) 2015-2023 Thorsten Liebig <thorsten.liebig@gmx.de>
 
 """
+import os
+import tempfile
+from matplotlib import pyplot as plt
+from math import pi
+import numpy as np
+from dataclasses import dataclass
 
-### Import Libraries
-import os, tempfile
-from pylab import *
+from pathlib import Path
 
-from CSXCAD  import ContinuousStructure
-from openEMS import openEMS
-from openEMS.physical_constants import *
+from CSXCAD import CSXCAD
+from openEMS.openEMS import openEMS
+from openEMS.physical_constants import C0, EPS0, Z0, MUE0
+
+from mpl_toolkits.mplot3d import Axes3D
+
+
+@dataclass
+class Simulation:
+    name: str
+    geometry_file: Path
+    sim_path: Path
+
+### General parameter setup
+dir_  = Path(__file__).parent
+name = Path(__file__).stem
+sim = Simulation(
+    name=name,
+    geometry_file= dir_ / f"{name}.xml",
+    sim_path=dir_ / "results")
 
 ### Setup the simulation
-Sim_Path = os.path.join(tempfile.gettempdir(), 'Rect_WG')
-
 post_proc_only = False
 unit = 1e-6; #drawing unit in um
 
@@ -50,7 +69,7 @@ FDTD.SetGaussExcite(0.5*(f_start+f_stop),0.5*(f_stop-f_start));
 FDTD.SetBoundaryCond([0, 0, 0, 0, 3, 3]);
 
 ### Setup geometry & mesh
-CSX = ContinuousStructure()
+CSX = CSXCAD.ContinuousStructure()
 FDTD.SetCSX(CSX)
 mesh = CSX.GetGrid()
 mesh.SetDeltaUnit(unit)
@@ -80,21 +99,15 @@ stop  = [a, b, length];
 Et.AddBox(start, stop);
 
 ### Run the simulation
-if 0:  # debugging only
-    CSX_file = os.path.join(Sim_Path, 'rect_wg.xml')
-    if not os.path.exists(Sim_Path):
-        os.mkdir(Sim_Path)
-    CSX.Write2XML(CSX_file)
-    from CSXCAD import AppCSXCAD_BIN
-    os.system(AppCSXCAD_BIN + ' "{}"'.format(CSX_file))
+CSX.Write2XML(sim.geometry_file)
 
 if not post_proc_only:
-    FDTD.Run(Sim_Path, cleanup=True)
+    FDTD.Run(str(sim.sim_path), cleanup=True)
 
 ### Postprocessing & plotting
-freq = linspace(f_start,f_stop,201)
+freq = np.linspace(f_start,f_stop,201)
 for port in ports:
-    port.CalcPort(Sim_Path, freq)
+    port.CalcPort(str(sim.sim_path), freq)
 
 s11 = ports[0].uf_ref / ports[0].uf_inc
 s21 = ports[1].uf_ref / ports[0].uf_inc
@@ -102,22 +115,22 @@ ZL  = ports[0].uf_tot / ports[0].if_tot
 ZL_a = ports[0].ZL # analytic waveguide impedance
 
 ## Plot s-parameter
-figure()
-plot(freq*1e-6,20*log10(abs(s11)),'k-',linewidth=2, label='$S_{11}$')
-grid()
-plot(freq*1e-6,20*log10(abs(s21)),'r--',linewidth=2, label='$S_{21}$')
-legend();
-ylabel('S-Parameter (dB)')
-xlabel(r'frequency (MHz) $\rightarrow$')
+plt.figure()
+plt.plot(freq*1e-6,20*np.log10(abs(s11)),'k-',linewidth=2, label='$S_{11}$')
+plt.grid()
+plt.plot(freq*1e-6,20*np.log10(abs(s21)),'r--',linewidth=2, label='$S_{21}$')
+plt.legend();
+plt.ylabel('S-Parameter (dB)')
+plt.xlabel(r'frequency (MHz) $\rightarrow$')
 
 ## Compare analytic and numerical wave-impedance
-figure()
-plot(freq*1e-6,real(ZL), linewidth=2, label='$\Re\{Z_L\}$')
-grid()
-plot(freq*1e-6,imag(ZL),'r--', linewidth=2, label='$\Im\{Z_L\}$')
-plot(freq*1e-6,ZL_a,'g-.',linewidth=2, label='$Z_{L, analytic}$')
-ylabel('ZL $(\Omega)$')
-xlabel(r'frequency (MHz) $\rightarrow$')
-legend()
+plt.figure()
+plt.plot(freq*1e-6,np.real(ZL), linewidth=2, label='$\Re\{Z_L\}$')
+plt.grid()
+plt.plot(freq*1e-6,np.imag(ZL),'r--', linewidth=2, label='$\Im\{Z_L\}$')
+plt.plot(freq*1e-6,ZL_a,'g-.',linewidth=2, label='$Z_{L, analytic}$')
+plt.ylabel('ZL $(\Omega)$')
+plt.xlabel(r'frequency (MHz) $\rightarrow$')
+plt.legend()
 
-show()
+plt.show()

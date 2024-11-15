@@ -10,15 +10,39 @@
 
 """
 
-
 ### Import Libraries
-import os, tempfile
-from pylab import *
+import os
+import tempfile
+from matplotlib import pyplot as plt
+from math import pi, floor, ceil
+import numpy as np
+from numpy import linspace, imag, real, sqrt, array, log10, cos, sin, arange, squeeze, angle
+from dataclasses import dataclass
 
-from CSXCAD  import ContinuousStructure
-from openEMS import openEMS
-from openEMS.physical_constants import *
+from pathlib import Path
+
+from CSXCAD import CSXCAD, ContinuousStructure
+from openEMS.openEMS import openEMS
+from openEMS.physical_constants import C0, EPS0, Z0, MUE0
+
+from mpl_toolkits.mplot3d import Axes3D
 from openEMS.automesh import mesh_hint_from_box
+
+
+@dataclass
+class Simulation:
+    name: str
+    geometry_file: Path
+    sim_path: Path
+
+### General parameter setup
+dir_  = Path(__file__).parent
+name = Path(__file__).stem
+sim = Simulation(
+    name=name,
+    geometry_file= dir_ / f"{name}.xml",
+    sim_path=dir_ / "results")
+
 
 ### Class to represent single CRLH unit cells
 class CRLH_Cells:
@@ -81,7 +105,7 @@ class CRLH_Cells:
 
 if __name__ == '__main__':
     ### Setup the simulation
-    Sim_Path = os.path.join(tempfile.gettempdir(), 'CRLH_Extraction')
+    str(sim.sim_path) = os.path.join(tempfile.gettempdir(), 'CRLH_Extraction')
     post_proc_only = False
 
     unit = 1e-6 # specify everything in um
@@ -157,33 +181,27 @@ if __name__ == '__main__':
     port[1] = FDTD.AddMSLPort( 2,  pec, portstart, portstop, 'x', 'z', MeasPlaneShift=feed_length/2, priority=10)
 
     ### Run the simulation
-    if 1:  # debugging only
-        CSX_file = os.path.join(Sim_Path, 'CRLH_Extraction.xml')
-        if not os.path.exists(Sim_Path):
-            os.mkdir(Sim_Path)
-        CSX.Write2XML(CSX_file)
-        from CSXCAD import AppCSXCAD_BIN
-        os.system(AppCSXCAD_BIN + ' "{}"'.format(CSX_file))
+    CSX.Write2XML(sim.geometry_file)
 
     if not post_proc_only:
-        FDTD.Run(Sim_Path, cleanup=True)
+        FDTD.Run(str(sim.sim_path), cleanup=True)
 
     ### Post-Processing
     f = linspace( f_start, f_stop, 1601 )
     for p in port:
-        p.CalcPort( Sim_Path, f, ref_impedance = 50, ref_plane_shift = feed_length)
+        p.CalcPort( str(sim.sim_path), f, ref_impedance = 50, ref_plane_shift = feed_length)
 
     # calculate and plot scattering parameter
     s11 = port[0].uf_ref / port[0].uf_inc
     s21 = port[1].uf_ref / port[0].uf_inc
 
-    plot(f/1e9,20*log10(abs(s11)),'k-' , linewidth=2, label='$S_{11}$')
-    plot(f/1e9,20*log10(abs(s21)),'r--', linewidth=2, label='$S_{21}$')
-    grid()
-    legend(loc=3)
-    ylabel('S-Parameter (dB)')
-    xlabel('frequency (GHz)')
-    ylim([-40, 2])
+    plt.plot(f/1e9,20*log10(abs(s11)),'k-' , linewidth=2, label='$S_{11}$')
+    plt.plot(f/1e9,20*log10(abs(s21)),'r--', linewidth=2, label='$S_{21}$')
+    plt.grid()
+    plt.legend(loc=3)
+    plt.ylabel('S-Parameter (dB)')
+    plt.xlabel('frequency (GHz)')
+    plt.ylim([-40, 2])
 
     ### Extract CRLH parameter form ABCD matrix
     A = ((1+s11)*(1-s11) + s21*s21)/(2*s21)
@@ -218,15 +236,14 @@ if __name__ == '__main__':
     beta_calc = real(arccos(1-(w**2-wse**2)*(w**2-wsh**2)/(2*w**2/CR/LR)))
 
     # plot
-    figure()
+    plt.figure()
     beta = -angle(s21)/CRLH.LL/unit
-    plot(abs(beta)*CRLH.LL*unit/pi,f*1e-9,'k-', linewidth=2, label=r'$\beta_{CRLH,\ 1\ cell}$' )
-    grid()
-    plot(beta_calc/pi,f*1e-9,'c--', linewidth=2, label=r'$\beta_{CRLH,\ \infty\ cells}$')
-    plot(real(port[1].beta)*CRLH.LL*unit/pi,f*1e-9,'g-', linewidth=2, label=r'$\beta_{MSL}$')
-    ylim([1, 6])
-    xlabel(r'$|\beta| p / \pi$')
-    ylabel('frequency (GHz)')
-    legend(loc=2)
-
-    show()
+    plt.plot(abs(beta)*CRLH.LL*unit/pi,f*1e-9,'k-', linewidth=2, label=r'$\beta_{CRLH,\ 1\ cell}$' )
+    plt.grid()
+    plt.plot(beta_calc/pi,f*1e-9,'c--', linewidth=2, label=r'$\beta_{CRLH,\ \infty\ cells}$')
+    plt.plot(real(port[1].beta)*CRLH.LL*unit/pi,f*1e-9,'g-', linewidth=2, label=r'$\beta_{MSL}$')
+    plt.ylim([1, 6])
+    plt.xlabel(r'$|\beta| p / \pi$')
+    plt.ylabel('frequency (GHz)')
+    plt.legend(loc=2)
+    plt.show()

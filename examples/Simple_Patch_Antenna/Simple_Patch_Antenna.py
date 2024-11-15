@@ -22,7 +22,8 @@ from matplotlib import pyplot as plt
 
 from CSXCAD  import ContinuousStructure
 from openEMS import openEMS
-from openEMS.physical_constants import *
+from openEMS.physical_constants import C0, EPS0, Z0, MUE0
+
 
 @dataclass
 class Simulation:
@@ -34,8 +35,8 @@ class Simulation:
 dir_  = Path(__file__).parent
 sim = Simulation(
     name="Simple_Patch_Antenna",
-    geometry_file=(dir_ / Path(__file__).with_suffix('.xml').name),
-    sim_path=dir_ / Path(__file__).stem)
+    geometry_file=dir_ / 'Simple_Patch_Antenna.xml',
+    sim_path=dir_ / "results"
 
 
 # setup FDTD parameter & excitation function
