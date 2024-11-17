@@ -1,5 +1,5 @@
 # Define the image name and container name
-IMAGE_NAME = openems-image
+IMAGE_NAME = openems
 CONTAINER_NAME = openems-container
 LOCAL_DIR = $(shell pwd)  # Current directory (where the Makefile is located)
 CONTAINER_WORKDIR = /app
@@ -14,10 +14,11 @@ build:
 # Run the Docker container with volume mounts for local development
 
 #-e DISPLAY=host.docker.internal:0 \
+
 run:
-	docker run \
+	sudo xhost +local:docker && docker run \
+		-v ./:/home/appuser \
 		-v /tmp/.X11-unix:/tmp/.X11-unix \
-		-v ./:/app \
 		-it --rm \
 		-e DISPLAY=${DISPLAY} \
 		--name $(CONTAINER_NAME) \
