@@ -16,8 +16,16 @@ build:
 #-e DISPLAY=host.docker.internal:0 \
 
 run:
+	docker run \
+		-v $(LOCAL_DIR):/home/appuser \
+		-it --rm \
+		--name $(CONTAINER_NAME) \
+		$(IMAGE_NAME) \
+	  ${COMMAND}	
+
+run_visual:
 	sudo xhost +local:docker && docker run \
-		-v ./:/home/appuser \
+		-v $(LOCAL_DIR):/home/appuser \
 		-v /tmp/.X11-unix:/tmp/.X11-unix \
 		-it --rm \
 		-e DISPLAY=${DISPLAY} \

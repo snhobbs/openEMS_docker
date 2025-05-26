@@ -82,3 +82,19 @@ make clean
 [2] [openEMS documentation](https://docs.openems.de).  
 [3] [openEMS](https://www.openems.de).  
 [4] [XQuartz.org](https://www.xquartz.org/).
+
+
+
+
+# Changes
+## Adding openems_base
+Added a base image that includes all the layers needed prebuild.
+
+```bash
+docker build -f openems-base-Dockerfile -t openems_base .
+```
+
+## Building openems image
+```bash
+docker build -f Dockerfile -t openems .
+```
