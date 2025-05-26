@@ -87,7 +87,7 @@ make clean
 
 
 # Changes
-## Adding openems_base
+## Adding openems_base as a builder
 Added a base image that includes all the layers needed prebuild.
 
 ```bash
@@ -109,4 +109,9 @@ docker run \
     --name openems-isntance \
     openems \
     bash
+```
+
+## Run AppCSXCAD
+```bash
+make run_visual COMMAND=AppCSXCAD
 ```
