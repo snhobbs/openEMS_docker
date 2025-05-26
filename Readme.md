@@ -98,3 +98,15 @@ docker build -f openems-base-Dockerfile -t openems_base .
 ```bash
 docker build -f Dockerfile -t openems .
 ```
+
+## Running Interactively
+```bash
+docker run \
+    -v /tmp/.X11-unix:/tmp/.X11-unix \
+    -v ./:/app \
+    -it --rm \
+    -e DISPLAY=${DISPLAY} \
+    --name openems-isntance \
+    openems \
+    bash
+```

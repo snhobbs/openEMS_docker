@@ -34,10 +34,10 @@ RUN cp /root/AppCSXCAD/AppCSXCAD/AppCSXCAD.sh /bin
 ## Build openEMS
 RUN mkdir /root/openems
 WORKDIR /root/openems
-RUN git clone --recursive https://github.com/thliebig/CSXCAD.git
-RUN git clone --recursive https://github.com/thliebig/QCSXCAD.git
-RUN git clone --recursive https://github.com/thliebig/fparser.git
-RUN git clone --recursive https://github.com/thliebig/openEMS.git
+RUN git clone --recursive --branch v0.6.3 https://github.com/thliebig/CSXCAD.git
+RUN git clone --recursive --branch v0.6.3 https://github.com/thliebig/QCSXCAD.git
+RUN git clone --recursive --branch master https://github.com/thliebig/fparser.git
+RUN git clone --recurse-submodules --branch v0.0.36 https://github.com/thliebig/openEMS.git
 
 WORKDIR /root/openems/fparser
 RUN cmake ./
@@ -65,10 +65,8 @@ RUN cp nf2ff /bin
 
 WORKDIR /root/openems/openEMS/python
 RUN python3 setup.py build_ext
+RUN pip install pkgconfig h5py==3.13.0
 RUN python3 setup.py install 
-
-WORKDIR /root/openems/openEMS/matlab
-RUN mkoctfile h5readatt_octave.cc -I/usr/include/hdf5 -I/usrlib/x86_64-linux-gnu/hdf5 -I/usr/include/hdf5/serial/ -lhdf5 -L/usr/lib/x86_64-linux-gnu/hdf5/openmpi
 
 # Set user and group
 ARG user=appuser

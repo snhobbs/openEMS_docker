@@ -21,7 +21,7 @@ RUN apt-get install -y gengetopt help2man groff pod2pdf bison flex libhpdf-dev l
 
 ## Install python
 RUN apt-get install -y python3-tk
-RUN apt-get install -y python3.11
+RUN apt-get install -y python3.10
 RUN apt-get install -y python3-pip
 RUN apt-get install -y python3-dev
 
