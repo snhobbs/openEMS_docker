@@ -1,0 +1,23 @@
+# ---------- Stage 1: Build ----------
+FROM openems_base AS builder
+ENV DEBIAN_FRONTEND=noninteractive
+
+ARG BRANCH=v0.0.36.alpha2
+
+WORKDIR /root/
+RUN git clone --recursive --branch ${BRANCH} https://github.com/snhobbs/OpenEMS-Project.git
+
+# Build all components
+WORKDIR /root/OpenEMS-Project/fparser
+RUN cmake . && make -j$(nproc) && make install
+
+WORKDIR /root/OpenEMS-Project/CSXCAD
+RUN cmake . && make -j$(nproc) && make install
+
+WORKDIR /root/OpenEMS-Project/QCSXCAD
+RUN cmake . && make -j$(nproc) && make install
+
+WORKDIR /root/OpenEMS-Project/AppCSXCAD
+RUN cmake . && make -j$(nproc) && make install
+
+CMD ["bash"]

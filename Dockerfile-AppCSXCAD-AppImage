@@ -1,0 +1,44 @@
+# ---------- Stage 1: Build ----------
+FROM openems_base AS builder
+ENV DEBIAN_FRONTEND=noninteractive
+
+ARG BRANCH=v0.0.36.alpha2
+
+WORKDIR /root/
+RUN git clone --recursive --branch ${BRANCH} https://github.com/snhobbs/OpenEMS-Project.git
+
+# Build all components
+WORKDIR /root/OpenEMS-Project/fparser
+RUN cmake . && make -j$(nproc) && make install
+
+WORKDIR /root/OpenEMS-Project/CSXCAD
+RUN cmake . && make -j$(nproc) && make install
+
+WORKDIR /root/OpenEMS-Project/QCSXCAD
+RUN cmake . && make -j$(nproc) && make install
+
+WORKDIR /root/OpenEMS-Project/AppCSXCAD
+RUN cmake . && make -j$(nproc) && make install
+
+WORKDIR /root/
+
+RUN apt install wget
+
+RUN wget https://github.com/probonopd/linuxdeployqt/releases/download/continuous/linuxdeployqt-continuous-x86_64.AppImage && \
+    chmod 775 linuxdeployqt-continuous-x86_64.AppImage && \
+    ./linuxdeployqt-continuous-x86_64.AppImage --appimage-extract && \
+    mv squashfs-root/ linuxdeployqt-continuous
+
+RUN mkdir /root/appimage
+WORKDIR /root/appimage
+
+RUN convert -size 256x256 xc:white -gravity center \
+  -pointsize 24 -annotate 0 "AppCSXCAD" appcsxcad.png
+
+RUN echo '[Desktop Entry]\nType=Application\nName=AppCSXCAD\nExec=AppRun %F\nIcon=appcsxcad\nComment=View and edit OpenEMS Goemetries\nTerminal=true\nCategories=Education;Science;' > default.desktop
+
+# Copy the binary to expected path inside AppDir structure
+RUN mkdir -p local/bin && cp /usr/local/bin/AppCSXCAD local/bin
+
+# Use linuxdeploy to populate dependencies (this assumes Qt app)
+RUN /root/linuxdeployqt-continuous/AppRun /root/appimage/local/bin/AppCSXCAD -appimage
