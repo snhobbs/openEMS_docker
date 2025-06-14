@@ -1,11 +1,27 @@
-# ---------- Stage 1: Build ----------
-FROM openems_base AS builder
+# Base image
+FROM ubuntu:22.04 AS builder
 ENV DEBIAN_FRONTEND=noninteractive
+# Install all required packages
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    git wget build-essential cmake pkg-config \
+    libx11-dev x11-apps paraview \
+    libhdf5-dev libvtk7-dev libvtk7-qt-dev \
+    libboost-all-dev libcgal-dev libtinyxml-dev \
+    qtbase5-dev octave liboctave-dev \
+    gengetopt help2man groff pod2pdf bison flex libhpdf-dev libtool \
+    python3.10 python3-pip python3-dev python3-tk vim imagemagick\
+    fonts-dejavu-core \
+    && rm -rf /var/lib/apt/lists/*
 
-ARG BRANCH=v0.0.36.alpha2
+# Upgrade pip and install Python tools
+RUN pip install --upgrade pip wheel setuptools==58.2.0 pyproject-toml
 
+# Clone OpenEMS project
 WORKDIR /root/
-RUN git clone --recursive --branch ${BRANCH} https://github.com/snhobbs/OpenEMS-Project.git
+ARG BRANCH=v0.0.36.alpha2
+ARG REPO=https://github.com/snhobbs/OpenEMS-Project.git
+
+RUN git clone --recursive --branch ${BRANCH} ${REPO}
 
 # Build all components
 WORKDIR /root/OpenEMS-Project/fparser
@@ -20,25 +36,37 @@ RUN cmake . && make -j$(nproc) && make install
 WORKDIR /root/OpenEMS-Project/AppCSXCAD
 RUN cmake . && make -j$(nproc) && make install
 
+# Download and prepare linuxdeployqt
 WORKDIR /root/
-
-RUN apt install wget
 
 RUN wget https://github.com/probonopd/linuxdeployqt/releases/download/continuous/linuxdeployqt-continuous-x86_64.AppImage && \
     chmod 775 linuxdeployqt-continuous-x86_64.AppImage && \
     ./linuxdeployqt-continuous-x86_64.AppImage --appimage-extract && \
     mv squashfs-root/ linuxdeployqt-continuous
 
-RUN mkdir /root/appimage
+# Setup AppImage structure
 WORKDIR /root/appimage
-
-RUN convert -size 256x256 xc:white -gravity center \
-  -pointsize 24 -annotate 0 "AppCSXCAD" appcsxcad.png
-
-RUN echo '[Desktop Entry]\nType=Application\nName=AppCSXCAD\nExec=AppRun %F\nIcon=appcsxcad\nComment=View and edit OpenEMS Goemetries\nTerminal=true\nCategories=Education;Science;' > default.desktop
-
-# Copy the binary to expected path inside AppDir structure
 RUN mkdir -p local/bin && cp /usr/local/bin/AppCSXCAD local/bin
 
+# Generate a basic icon and desktop file
+RUN convert -size 256x256 xc:white -gravity center \
+  -font DejaVu-Sans -pointsize 24 -annotate 0 "AppCSXCAD" appcsxcad.png
+
+RUN echo "[Desktop Entry]\n\
+Type=Application\n\
+Name=AppCSXCAD\n\
+Exec=AppRun %F\n\
+Icon=appcsxcad\n\
+Comment=View and edit OpenEMS Geometries\n\
+Terminal=true\n\
+Categories=Education;Science;" > default.desktop
+
 # Use linuxdeploy to populate dependencies (this assumes Qt app)
-RUN /root/linuxdeployqt-continuous/AppRun /root/appimage/local/bin/AppCSXCAD -appimage
+RUN /root/linuxdeployqt-continuous/AppRun /root/appimage/local/bin/AppCSXCAD -appimage -bundle-non-qt-libs -verbose=2
+
+# Copy final artifact to a known location
+RUN mkdir -p /output && cp /root/appimage/*.AppImage /output/
+
+# ---- Stage 2: Minimal stage that just contains the AppImage output ----
+FROM scratch AS export-stage
+COPY --from=builder /output /output

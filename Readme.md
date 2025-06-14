@@ -115,3 +115,10 @@ docker run \
 ```bash
 make run_visual COMMAND=AppCSXCAD
 ```
+
+
+## Building AppCSXCAD AppImage
+```bash
+docker build --rm -f Dockerfile-AppCSXCAD-AppImage -t appcsxcad-appimage --output type=local,dest=./ .
+```
+This creates a stand-alone AppImage in ./output/AppCSXCAD-x86_64.AppImage
