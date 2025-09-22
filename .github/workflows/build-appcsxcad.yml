@@ -1,0 +1,107 @@
+name: Build AppCSXCAD AppImage
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+jobs:
+  build-appcsxcad-appimage:
+    runs-on: ubuntu-22.04
+
+    env:
+      DEBIAN_FRONTEND: noninteractive
+      BRANCH: master
+      REPO: https://github.com/thliebig/OpenEMS-Project.git
+      OPENEMS_DIR: ${{ github.workspace }}/OpenEMS-Project
+      APPIMAGE_DIR: ${{ github.workspace }}/appimage
+      LINUXDEPLOYQT_DIR: ${{ github.workspace }}/linuxdeployqt-continuous
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Install dependencies
+      run: |
+        sudo apt-get update && sudo apt-get install -y --no-install-recommends \
+          git wget build-essential cmake pkg-config \
+          libx11-dev x11-apps paraview \
+          libhdf5-dev libvtk7-dev libvtk7-qt-dev \
+          libboost-all-dev libcgal-dev libtinyxml-dev \
+          qtbase5-dev octave liboctave-dev \
+          gengetopt help2man groff pod2pdf bison flex libhpdf-dev libtool \
+          python3-pip python3-dev python3-tk vim imagemagick \
+          fonts-dejavu-core
+
+    - name: Upgrade pip and install Python tools
+      run: |
+        python3 -m pip install --upgrade pip wheel setuptools==58.2.0 pyproject-toml
+
+    - name: Clone OpenEMS project
+      run: |
+        git clone --recursive --branch "$BRANCH" "$REPO"
+
+    - name: Build fparser
+      working-directory: ${{ env.OPENEMS_DIR }}/fparser
+      run: |
+        cmake .
+        make -j$(nproc)
+        sudo make install
+
+    - name: Build CSXCAD
+      working-directory: ${{ env.OPENEMS_DIR }}/CSXCAD
+      run: |
+        cmake .
+        make -j$(nproc)
+        sudo make install
+
+    - name: Build QCSXCAD
+      working-directory: ${{ env.OPENEMS_DIR }}/QCSXCAD
+      run: |
+        cmake .
+        make -j$(nproc)
+        sudo make install
+
+    - name: Build AppCSXCAD
+      working-directory: ${{ env.OPENEMS_DIR }}/AppCSXCAD
+      run: |
+        cmake -DCMAKE_INSTALL_PREFIX=${{ env.OPENEMS_DIR }}/AppCSXCAD/local .
+        make -j$(nproc)
+        sudo make install
+
+    - name: Download and extract linuxdeployqt
+      working-directory: ${{ github.workspace }}
+      run: |
+        wget https://github.com/probonopd/linuxdeployqt/releases/download/continuous/linuxdeployqt-continuous-x86_64.AppImage
+        chmod +x linuxdeployqt-continuous-x86_64.AppImage
+        ./linuxdeployqt-continuous-x86_64.AppImage --appimage-extract
+        mv squashfs-root linuxdeployqt-continuous
+
+    - name: Prepare AppImage structure
+      working-directory: ${{ env.APPIMAGE_DIR }}
+      run: |
+        cp ${{ env.OPENEMS_DIR }}/AppCSXCAD/local/bin/AppCSXCAD appimage/local/bin
+
+        convert -size 256x256 xc:white -gravity center \
+          -font DejaVu-Sans -pointsize 24 -annotate 0 "AppCSXCAD" appimage/appcsxcad.png
+
+        echo "[Desktop Entry]
+        Type=Application
+        Name=AppCSXCAD
+        Exec=AppRun %F
+        Icon=appcsxcad
+        Comment=View and edit OpenEMS Geometries
+        Terminal=true
+        Categories=Education;Science;" > appimage/default.desktop
+
+    - name: Bundle AppImage
+      run: |
+        "${LINUXDEPLOYQT_DIR}/AppRun" local/bin/AppCSXCAD \
+          -appimage -bundle-non-qt-libs -verbose=2
+
+    - name: Upload AppImage artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: AppCSXCAD.AppImage
+        path: ${{ env.APPIMAGE_DIR }}/*.AppImage
